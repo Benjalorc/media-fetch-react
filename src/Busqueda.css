@@ -111,10 +111,6 @@
 	}
 }
 
-
-div.cargando{
-	margin: auto;
-}
 .alert-heading{
 	display: grid;
 	grid-template-columns: 1fr 30px;
@@ -129,5 +125,12 @@ div.cargando{
 }
 .buscando.cargando+h3,
 .buscando.cargando+h3+form{
+	display: none;
+}
+.cargando+h3+form+div{
+	margin: auto;
+}
+
+.oculto{
 	display: none;
 }
