@@ -27,8 +27,8 @@ function Results({media, sendToParent}){
             <div className="service">Servicio</div>
           </div>
           {
-            media.data.map((res)=>{
-              return <ResRow el={res} />
+            media.data.map((res, i)=>{
+              return <ResRow key={`${media.param}-${i}`} el={res} />
             })
           }
         </div>
@@ -78,9 +78,9 @@ function fetchData(endpoint, nombre){
 
 function Cabecera({endpoint, sendToParent}){
 
-  let [entrada, setEntrada] = useState("");
-  let [loading, setLoading] = useState(false);
+  let entrada = useRef();
   let tiempo = useRef();
+  let [loading, setLoading] = useState(false);
 
   function asignarImagen(arr){
 
@@ -100,34 +100,40 @@ function Cabecera({endpoint, sendToParent}){
       arr[i].imagen = images[index];
     }
   }
+
   function showHold(val){
     let holdAlert = document.getElementById("holdAlert");
     if(val === true) holdAlert.classList.remove("oculto");
     else holdAlert.classList.add("oculto");
   }
+  function cleanTime(tiempo){
+    clearTimeout(tiempo.current);
+    tiempo.current = null;
+  }
 
   useEffect(()=>{
-    if(loading){
-      console.log("ENTRE");
-      tiempo.current = setTimeout(()=>{showHold(true)}, 3000);
 
-      fetchData(endpoint, entrada)
+    if(loading && !tiempo.current){
+
+      tiempo.current = setTimeout(()=>{ showHold(true) }, 3000);
+
+      fetchData(endpoint, entrada.current)
       .then((prom)=>{
         if(loading){
-          clearTimeout(tiempo.current);
+          cleanTime(tiempo)
           showHold(false);
           asignarImagen(prom);
-          sendToParent({"data": prom, "param": entrada});
+          sendToParent({"data": prom, "param": entrada.current});
           setLoading(false);
         }
       })
       .catch((err)=>{
-        clearTimeout(tiempo.current);
+        cleanTime(tiempo);
         showHold(false);
         setLoading(false);
         sendToParent({
           "data": [],
-          "param": entrada,
+          "param": entrada.current,
           "err": {
             title: "No se pudo conectar con el API.",
             text: "Verifique su conexión a internet y vuelva a intentar."
@@ -136,9 +142,10 @@ function Cabecera({endpoint, sendToParent}){
       });
     }
 
-  }, [loading, entrada]);
+  }, [loading, endpoint, sendToParent]);
 
-  function doSearch(dato){
+  function doSearch(e){
+    e.preventDefault();
     sendToParent({"data": null, "err": null, "param": ""});
     setLoading(true);
   }
@@ -151,9 +158,9 @@ function Cabecera({endpoint, sendToParent}){
 
             <h3 className={`text-center buscando ${(loading ? "cargando" : "")}`}>Buscando resultados...</h3>
             <h3 className="text-center">Realice su búsqueda</h3>
-            <form onSubmit={(event)=>{event.preventDefault(); doSearch(entrada) }} className="form-inline">
+            <form onSubmit={doSearch} className="form-inline">
               <div className="form-group">
-                <input type="text" className="form-control form-control-lg" value={entrada} onChange={e => setEntrada(e.target.value)} name="nombre" placeholder="Ej: Tobey Maguire" />
+                <input type="text" className="form-control form-control-lg" onChange={e => entrada.current = e.target.value } name="nombre" placeholder="Ej: Tobey Maguire" />
               </div>
               <button type="submit" className="btn btn-lg btn-primary">Buscar</button>
             </form>
@@ -168,7 +175,7 @@ function Cabecera({endpoint, sendToParent}){
             <p className="mb-0">Espere mientras encontramos su búsqueda</p>
             <hr />
             <p className="mb-0">O cancele en cualquier momento y realice una nueva búsqueda</p>
-            <button type="button" className="btn btn-danger" onClick={()=> setLoading(false)}>Cancelar</button>
+            <button type="button" className="btn btn-danger" onClick={()=>{ setLoading(false); showHold(false); } }>Cancelar</button>
           </div>
         </div>
       </React.Fragment>
@@ -179,19 +186,11 @@ function Busqueda() {
 
   let [media, setMedia] = useState({"data": null,"err": null, "param": ""});
 
-  let assignMedia = (media)=>{
-    setMedia(media)
-  }
-
-  useEffect(()=>{
-    console.log("NEW VALUE, RERENDER", media);
-  }, [media]);
-
   return (
     <div className="container">
       <div className="row">
-        <Cabecera endpoint="http://localhost:3000/media/" sendToParent={assignMedia.bind(this)} />
-        {media.data || media.err ? <Results media={media} sendToParent={assignMedia.bind(this)} /> : ""}
+        <Cabecera endpoint="http://localhost:3000/media/" sendToParent={setMedia} />
+        {media.data || media.err ? <Results media={media} sendToParent={setMedia} /> : ""}
       </div>
     </div>
   );
